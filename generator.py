@@ -11,6 +11,7 @@ from Crypto.Random import get_random_bytes
 CONFIG_FILE = "config.json"
 generated_password = None
 generated_password_encrypted = None
+user_inputted_password_encrypted = None
 
 # Padding for the input string
 BLOCK_SIZE = 16
@@ -69,21 +70,39 @@ def load_config():
     }
 
 def decrypt_password_action():
-    if decrypt_entry is None:
+    encrypted_input = decrypt_entry.get()
+    if not encrypted_input:
         decrypted_password_label.config(text="No password to decrypt.")
         return
     try:
-        
-        # Decrypt the encrypted password
-        decrypted_password = decrypt_password(generated_password_encrypted)
-        
-        # Update the decrypted password label to show the decrypted password
+        decrypted_password = decrypt_password(encrypted_input)
         decrypted_password_label.config(text="Decrypted Password: " + decrypted_password)
-    
     except Exception as e:
-        # If there's an error (e.g., Base64 decoding fails, wrong key), show an error message
         decrypted_password_label.config(text="Error decrypting password: " + str(e))
+        print(str(e))
 
+
+
+# Button to encrypt the input and show the result
+def encrypt_input_action():
+    try:
+        user_input = encrypt_entry.get()
+        if not user_input:
+            encrypted_input_label.config(text="Please enter text to encrypt.")
+            return
+        encrypted_text = encrypt_password(user_input)
+        global user_inputted_password_encrypted
+        user_inputted_password_encrypted = encrypted_text
+        encrypted_input_label.config(text="Encrypted Output: " + str(encrypted_text))
+    except Exception as e:
+        encrypted_input_label.config(text="Error encrypting input: " + str(e))
+
+# Copy user input encrypted text
+def copy_encrypted_input():
+    global user_inputted_password_encrypted
+    encrypted_text = user_inputted_password_encrypted
+    if encrypted_text and encrypted_text != "Please enter text to encrypt." and not encrypted_text.startswith("Error"):
+        pyperclip.copy(encrypted_text)
 
 
 # Function to save configuration to a JSON file
@@ -118,12 +137,11 @@ def generate_password():
     passwordList = []
     for _ in range(length):
         rng = random.randint(0, sumWeight)
-        print()
-        if (rng <= lower_weight):
+        if (rng < lower_weight):
             passwordList.append(random.choice(string.ascii_lowercase))
-        elif (rng <= lower_weight + upper_weight):
+        elif (rng < lower_weight + upper_weight):
             passwordList.append(random.choice(string.ascii_uppercase))
-        elif (rng <= lower_weight + upper_weight + digit_weight):
+        elif (rng < lower_weight + upper_weight + digit_weight):
             passwordList.append(random.choice(string.digits))
         else:
             passwordList.append(random.choice(string.punctuation))
@@ -134,7 +152,7 @@ def generate_password():
     global generated_password_encrypted
     encrypted = encrypt_password(password)
     generated_password_encrypted = encrypted
-    label = password + '\n' + str(encrypted)[2:-1]
+    label = password + '\n' + str(encrypted)
     password_label.config(text=label)
 
 def copy_plain_password():
@@ -143,7 +161,7 @@ def copy_plain_password():
 
 def copy_encrypted_password():
     if not generated_password_encrypted == None:
-        pyperclip.copy(str(generated_password_encrypted[2:-1]))
+        pyperclip.copy(str(generated_password_encrypted))
     
 # Load configuration at startup
 config = load_config()
@@ -187,14 +205,20 @@ special_weight_entry.pack()
 
 # Create a label to display the generated password
 password_label = tk.Label(window, text="Click the button to generate a password", wraplength=950, padx=10, pady=20)
-password_label.pack(pady=20)
+password_label.pack()
 
 # Create a button to generate the password
 generate_button = tk.Button(window, text="Generate Password", command=generate_password)
 generate_button.pack()
 
+copy_plain_password_button = tk.Button(window, text="copy plain password", command=copy_plain_password)
+copy_plain_password_button.pack(pady=10)
+
+copy_encrypted_password_button = tk.Button(window, text="copy encrypted password", command=copy_encrypted_password)
+copy_encrypted_password_button.pack()
+
 # input for decrypting
-tk.Label(window, text="Insert password to decrypt:").pack()
+tk.Label(window, text="Insert encrypted password to decrypt:").pack(pady=10)
 decrypt_entry = tk.Entry(window, width=130)
 decrypt_entry.pack()
 
@@ -205,11 +229,20 @@ decrypt_button.pack(pady=10)
 decrypted_password_label = tk.Label(window, text="Decrypted Password: ")
 decrypted_password_label.pack(pady=5)
 
-copy_plain_password_button = tk.Button(window, text="copy plain password", command=copy_plain_password)
-copy_plain_password_button.pack(pady=10)
+# Label and entry for encrypting custom input
+tk.Label(window, text="Insert password to encrypt:").pack()
+encrypt_entry = tk.Entry(window, width=130)
+encrypt_entry.pack()
 
-copy_encrypted_password_button = tk.Button(window, text="copy encrypted password", command=copy_encrypted_password)
-copy_encrypted_password_button.pack(pady=10)
+# Label to display the encrypted result
+encrypted_input_label = tk.Label(window, text="Encrypted Output: ")
+encrypted_input_label.pack(pady=5)
+
+encrypt_button = tk.Button(window, text="Encrypt Input", command=encrypt_input_action)
+encrypt_button.pack(pady=5)
+
+copy_encrypted_input_button = tk.Button(window, text="Copy Encrypted Input", command=copy_encrypted_input)
+copy_encrypted_input_button.pack(pady=5)
 
 # Run the application
 window.mainloop()
